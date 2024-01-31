@@ -1,6 +1,7 @@
 
 #include "Server.hpp"
 
+#include <fcntl.h>
 #include <netinet/in.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -112,10 +113,16 @@ void Server::taskOnMessage(void (*funcptr)(char*, int)) {
                 continue;
             }
 
+            // Configurar o socket para o modo não bloqueante
+            int flags = fcntl(session, F_GETFL, 0);
+            fcntl(session, F_SETFL, flags | O_NONBLOCK);
+
             int valread = read(session, this->buffer, 1024 - 1);
 
             if (valread < 0) {
-                printf("Error reading from socket\n");
+                // printf("Error reading from socket\n");
+                continue;
+
             } else if (valread == 0) {
                 close(session);
                 printf("Client %d disconnected\n\n", i);
