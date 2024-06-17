@@ -16,12 +16,11 @@ Server::Server() {}
 Server::~Server() {}
 
 void Server::start(int port) {
-    int server_fd;
     int opt = 1;
 
     std::string hello = "Hello from server";
 
-    server_fd = createSocket();
+    int server_fd = createSocket();
     setSocketOptions(server_fd, opt);
     bindSocketToPort(server_fd, port);
     startListening(server_fd);
@@ -45,8 +44,6 @@ void Server::setSocketOptions(int server_fd, int opt) {
 }
 
 void Server::bindSocketToPort(int server_fd, int port) {
-    // socklen_t addrlen = sizeof(address);
-
     this->address.sin_family = AF_INET;
     this->address.sin_addr.s_addr = INADDR_ANY;
     this->address.sin_port = htons(port);
@@ -79,19 +76,12 @@ void Server::startAccept(int server_fd) {
             exit(EXIT_FAILURE);
         } else {
             // Check if there is a free slot
-            bool found = false;
-
-            for (int i = 0; i < slots_total; i++) {
-                if (slots[i] == 0) {
-                    slots[i] = new_socket;
-                    found = true;
-                    printf("Client %d connected\n", i);
-                    slots_index++;
-                    break;
-                }
-            }
-
-            if (!found) {
+            int freeSlotIndex = findFreeSlot();
+            if (freeSlotIndex != -1) {
+                this->slots[freeSlotIndex] = new_socket;
+                printf("Client %d connected\n", freeSlotIndex);
+                this->slots_index++;
+            } else {
                 printf("No free slots\n");
                 close(new_socket);
             }
@@ -99,6 +89,14 @@ void Server::startAccept(int server_fd) {
     }
 }
 
+int Server::findFreeSlot() {
+    for (int i = 0; i < this->slots_total; i++) {
+        if (this->slots[i] == 0) {
+            return i;
+        }
+    }
+    return -1;
+}
 void Server::onMessage(void (*funcptr)(char*, int)) {
     this->loopMsg = std::thread(&Server::taskOnMessage, this, funcptr);
     return;
@@ -106,8 +104,8 @@ void Server::onMessage(void (*funcptr)(char*, int)) {
 
 void Server::taskOnMessage(void (*funcptr)(char*, int)) {
     while (true) {
-        for (int i = 0; i < slots_total; i++) {
-            int session = slots[i];
+        for (int i = 0; i < this->slots_total; i++) {
+            int session = this->slots[i];
 
             if (session == 0) {
                 continue;
@@ -126,8 +124,8 @@ void Server::taskOnMessage(void (*funcptr)(char*, int)) {
             } else if (valread == 0) {
                 close(session);
                 printf("Client %d disconnected\n\n", i);
-                slots[i] = 0;
-                slots_index--;
+                this->slots[i] = 0;
+                this->slots_index--;
 
             } else {
                 this->buffer[valread] = '\0';

@@ -30,4 +30,5 @@ class Server {
     void setSocketOptions(int server_fd, int opt);
     void bindSocketToPort(int server_fd, int port);
     void startListening(int server_fd);
+    int findFreeSlot();
 };
